@@ -1,0 +1,4 @@
+.build/
+Data-Stream-Bulk-AnyEvent-v*/
+Data-Stream-Bulk-AnyEvent-v*.tar.gz
+*.BAK
