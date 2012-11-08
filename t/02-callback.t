@@ -6,7 +6,8 @@ use AnyEvent;
 
 BEGIN { use_ok('Data::Stream::Bulk::AnyEvent'); }
 
-my @ret = ([1,2], [1,2], [3,4], [1,2], [], [3,4], undef);
+my $cv = AE::cv;
+my @ret = ([1,2], [1,2], [3,4], [], [1,2], [3,4], [], undef);
 my @expected = @ret;
 my $stream =  Data::Stream::Bulk::AnyEvent->new(
 	callback => sub {
@@ -14,13 +15,15 @@ my $stream =  Data::Stream::Bulk::AnyEvent->new(
 		my $ret = shift @ret;
 		$cv->send($ret);
 		return $cv;
+	},
+	cb => sub {
+		my $got = shift->recv;
+		my $expected = shift @expected;
+		is_deeply($got, $expected);
+		$cv->send unless defined $got;
+		return defined $got;
 	}
 );
 
-ok(! $stream->is_done, '!is_done in initial');
-
-while(my (undef, $value) = each @expected) {
-	is_deeply($stream->next, $value);
-}
-
+$cv->recv;
 ok($stream->is_done, 'is_done');

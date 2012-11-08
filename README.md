@@ -1,6 +1,6 @@
 # NAME
 
-Data::Stream::Bulk::AnyEvent - Data::Stream::Bulk with reversed callback towards to asynchronous-friendly
+Data::Stream::Bulk::AnyEvent - Asynchronous-friendly Data::Stream::Bulk::Callback
 
 # VERSION
 
@@ -9,84 +9,80 @@ version v0.0.0
 # SYNOPSIS
 
     # Default to blocking-mode
-    my $stream = Data::Stream::Bulk::AnyEvent->new;
-    
-
-    # At producer side, you need to call C<put> explicitly.
-    $stream->put([1, 2]);
-    $stream->put([]); # After this, is_done will return true.
-    
-
+    my $stream = Data::Stream::Bulk::AnyEvent->new(
+        # In producer callback, Data::Stream::Bulk::AnyEvent object is passed.
+        # You need to call C<put> explicitly.
+        # Calling C<put([])> means all data is consumed.
+        producer => sub {
+            my ($stream) = @_;
+            my @data = ([1,2], [3,4], []);
+            my $cv = AE::cv;
+            my $w; $w = AE::timer 1, 0, sub { # Useless async
+                undef $w;
+                my $entry = shift @data;
+                $cv->send($entry);
+            };
+            return $cv;
+        }
+    );
     # In this mode, you can use this class like other Data::Stream::Bulk subclasses, at client side
-    # There is one significant difference. next() returns non-empty array reference as long as is_done is false
-    # NOTE that this may include blocking wait AE::cv->recv().
+    # NOTE that calling C<next> includes blocking wait AE::cv->recv() internally.
     $stream->next if ! $stream->is_done;
-
-    # Non-blocking-mode
-    my $stream = Data::Stream::Bulk::AnyEvent->new(blocking => 0);
-
-    $stream->next; $stream->next; $stream->next; # returns [], [], [], ....
-    $stream->put([1, 2]);
-    $stream->next; # returns [1,2]
 
     # Callback-mode
     # This is natrual mode for asynchronous codes.
-    my $stream = Data::Stream::Bulk::AnyEvent->new(on_next => sub { });
-    $stream->put([1, 2]); # Each time put() is called, on_next callback is called.
+    # Each time put() is called, callback is called.
+    # If you want to get more items, callback should return true. If not, return false.
+    my $stream = Data::Stream::Bulk::AnyEvent->new(
+        callback => sub { ... }, ...
+    )->cb(sub { my $ref = shift; ... return @$ref; });
 
 # DESCRIPTION
 
-You can consider this class is reversed callback version of [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback).
-[Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback) calls callback of producer side, while this class calls callback of consumer side if registered.
+This class is like [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), but there are some significant differences.
 
-Probably, you may also consider behavior of `next()` in blocking-mode to return always non-empty array reference
-is different from [Data::Stream::Bulk](http://search.cpan.org/perldoc?Data::Stream::Bulk) interface.
-It is true in literal. It is, however, necessary to keep user code of [Data::Stream::Bulk](http://search.cpan.org/perldoc?Data::Stream::Bulk).
-This class is intended to use with [AnyEvent](http://search.cpan.org/perldoc?AnyEvent), so it is assumed that data is asynchronously produced.
-If `next()` is permitted to return empty array reference, it returns empty array reference many times.
-Thus, user code like the following is likely to go into busy-loop;
+- Consumer side can use asynchronous callback style.
+- Producer callback, just a `callback` in [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback) does not return values. Values are put by calling `put` explicitly.
 
-    while(!$stream->is_done) {
-      foreach my $entry (@{$stream->next}) { # returning empty array many times
-        # ...
-      }
-    }
-
-This class is written to make [Net::Amazon::S3](http://search.cpan.org/perldoc?Net::Amazon::S3), using [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), AnyEvent-friendly.
+Primary purpose of this class is to make [Net::Amazon::S3](http://search.cpan.org/perldoc?Net::Amazon::S3), using [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), AnyEvent-friendly.
 
 # ATTRIBUTES
 
-## blocking
+## callback
 
-Specify boolean value whether blocking mode is or not. Default to true.
-If `on_next` is not undef, `blocking` has no effect.
+Same as [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback).
 
-You can change this value during lifetime of the object.
+Specify callback code reference called when data is requested.
+This attribute is `required`. Therefore, you need to specify in constructor argument.
 
-## on\_next
+There is no argument of the callback. Return value MUST be a condition variable that data is sent.
+If there is no more data, send `undef`.
 
-Specify callback code reference when `put()` is called. If you do not need callback, set `undef`.
-To set `on_next` means the object goes into callback mode.
-`on_next` is preferred over `blocking`.
+## cb
 
-You can change this value during lifetime of the object.
-NOTE that callback is called for CALLING `put()` AFTER setting callback.
-Streams put before setting callback still remains.
+Specify callback code reference called when `put()` is called.
+A parameter of the callback is AnyEvent::CondVar object.
+If the callback return true, iteration is continued.
+If false, iteration is suspended.
+If you need to resume iteration, you should call `next` or set `cb` again even though the same `cb` is used. 
+
+If you do not need callback, call `next` or set `cb` as `undef`.
+Setting `cb` as `undef` is succeeded only when iteration is not active, which means suspended or not started.
+To set `callback` as not-`undef` means this object goes into callback mode,
+while to set `callback` as `undef` means this object goes into blocking mode.
+
+You can change this value during lifetime of the object, except for the limitation described above.
 
 # METHODS
 
 ## next
 
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
+If called in callback mode, the object goes into blocking mode and callback is canceled.
 
 ## is\_done
 
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
-
-## put
-
-An argument should be an array reference to put into data stream.
-Empty array reference means this stream reaches end and `is_done()` will return true. 
 
 # AUTHOR
 
