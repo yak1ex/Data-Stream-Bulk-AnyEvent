@@ -45,7 +45,7 @@ sub is_done
 sub next
 {
 	my $self = shift;
-	return undef if $self->is_done;
+	return if $self->is_done;
 	$self->cb(undef) if $self->cb;
 	$self->_cv($self->callback->()) if(! $self->_cv);
 	my $ret = $self->_cv->recv;
