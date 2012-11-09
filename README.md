@@ -1,6 +1,6 @@
 # NAME
 
-Data::Stream::Bulk::AnyEvent - Asynchronous-friendly Data::Stream::Bulk::Callback
+Data::Stream::Bulk::AnyEvent - AnyEvent-friendly Data::Stream::Bulk::Callback
 
 # VERSION
 
@@ -10,16 +10,14 @@ version v0.0.0
 
     # Default to blocking-mode
     my $stream = Data::Stream::Bulk::AnyEvent->new(
-        # In producer callback, Data::Stream::Bulk::AnyEvent object is passed.
-        # You need to call C<put> explicitly.
-        # Calling C<put([])> means all data is consumed.
+        # Producer callback has no arguments, and MUST return condition variable.
+        # Items are sent via the condition variable as array ref.
+        # If there are no more data, send undef.
         producer => sub {
-            my ($stream) = @_;
-            my @data = ([1,2], [3,4], []);
             my $cv = AE::cv;
-            my $w; $w = AE::timer 1, 0, sub { # Useless async
+            my $w; $w = AE::timer 1, 0, sub { # Useless, just an example
                 undef $w;
-                my $entry = shift @data;
+                my $entry = shift @data; # defined like my @data = ([1,2], [2,3], undef);
                 $cv->send($entry);
             };
             return $cv;
@@ -31,8 +29,8 @@ version v0.0.0
 
     # Callback-mode
     # This is natrual mode for asynchronous codes.
-    # Each time put() is called, callback is called.
-    # If you want to get more items, callback should return true. If not, return false.
+    # Callback is called for each producer call.
+    # If you want to get more items, callback SHOULD return true. If not, return false.
     my $stream = Data::Stream::Bulk::AnyEvent->new(
         callback => sub { ... }, ...
     )->cb(sub { my $ref = shift; ... return @$ref; });
@@ -42,9 +40,9 @@ version v0.0.0
 This class is like [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), but there are some significant differences.
 
 - Consumer side can use asynchronous callback style.
-- Producer callback, just a `callback` in [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback) does not return values. Values are put by calling `put` explicitly.
+- Producer callback does not return actual items but return a condition variable. Items are sent via the condition variable.
 
-Primary purpose of this class is to make [Net::Amazon::S3](http://search.cpan.org/perldoc?Net::Amazon::S3), using [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), AnyEvent-friendly.
+Primary purpose of this class is to make [Net::Amazon::S3](http://search.cpan.org/perldoc?Net::Amazon::S3), using [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), AnyEvent-friendly by using [Module::AnyEvent::Helper::Filter](http://search.cpan.org/perldoc?Module::AnyEvent::Helper::Filter). Therefore, almost all is the same as [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), excpet for (producer) callbackreturns an AnyEvent condition variable.
 
 # ATTRIBUTES
 
@@ -55,14 +53,14 @@ Same as [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stre
 Specify callback code reference called when data is requested.
 This attribute is `required`. Therefore, you need to specify in constructor argument.
 
-There is no argument of the callback. Return value MUST be a condition variable that data is sent.
-If there is no more data, send `undef`.
+There is no argument of the callback. Return value MUST be a condition variable that items are sent as an array reference.
+If there is no more items, send `undef`.
 
 ## cb
 
-Specify callback code reference called when `put()` is called.
-A parameter of the callback is AnyEvent::CondVar object.
-If the callback return true, iteration is continued.
+Specify callback code reference called for each producer call.
+A parameter of the callback is an AnyEvent condition variable.
+If the callback returns true, iteration is continued.
 If false, iteration is suspended.
 If you need to resume iteration, you should call `next` or set `cb` again even though the same `cb` is used. 
 
@@ -83,6 +81,10 @@ If called in callback mode, the object goes into blocking mode and callback is c
 ## is\_done
 
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
+
+## recv
+
+Returns the self object.
 
 # AUTHOR
 

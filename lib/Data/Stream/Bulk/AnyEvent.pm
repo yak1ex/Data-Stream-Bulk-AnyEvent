@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package Data::Stream::Bulk::AnyEvent;
 
-# ABSTRACT: Asynchronous-friendly Data::Stream::Bulk::Callback
+# ABSTRACT: AnyEvent-friendly Data::Stream::Bulk::Callback
 # VERSION:
 
 use Moose;
@@ -75,6 +75,11 @@ sub _on_cb_set
 	}
 }
 
+sub recv
+{
+	return $_[0];
+}
+
 __PACKAGE__->meta->make_immutable;
 
 1;
@@ -83,16 +88,14 @@ __PACKAGE__->meta->make_immutable;
 
   # Default to blocking-mode
   my $stream = Data::Stream::Bulk::AnyEvent->new(
-      # In producer callback, Data::Stream::Bulk::AnyEvent object is passed.
-      # You need to call C<put> explicitly.
-      # Calling C<put([])> means all data is consumed.
+      # Producer callback has no arguments, and MUST return condition variable.
+      # Items are sent via the condition variable as array ref.
+      # If there are no more data, send undef.
       producer => sub {
-          my ($stream) = @_;
-          my @data = ([1,2], [3,4], []);
           my $cv = AE::cv;
-          my $w; $w = AE::timer 1, 0, sub { # Useless async
+          my $w; $w = AE::timer 1, 0, sub { # Useless, just an example
               undef $w;
-              my $entry = shift @data;
+              my $entry = shift @data; # defined like my @data = ([1,2], [2,3], undef);
               $cv->send($entry);
           };
           return $cv;
@@ -104,8 +107,8 @@ __PACKAGE__->meta->make_immutable;
 
   # Callback-mode
   # This is natrual mode for asynchronous codes.
-  # Each time put() is called, callback is called.
-  # If you want to get more items, callback should return true. If not, return false.
+  # Callback is called for each producer call.
+  # If you want to get more items, callback SHOULD return true. If not, return false.
   my $stream = Data::Stream::Bulk::AnyEvent->new(
       callback => sub { ... }, ...
   )->cb(sub { my $ref = shift; ... return @$ref; });
@@ -116,9 +119,9 @@ This class is like L<Data::Stream::Bulk::Callback>, but there are some significa
 
 =for :list
 * Consumer side can use asynchronous callback style.
-* Producer callback, just a C<callback> in L<Data::Stream::Bulk::Callback> does not return values. Values are put by calling C<put> explicitly.
+* Producer callback does not return actual items but return a condition variable. Items are sent via the condition variable.
 
-Primary purpose of this class is to make L<Net::Amazon::S3>, using L<Data::Stream::Bulk::Callback>, AnyEvent-friendly.
+Primary purpose of this class is to make L<Net::Amazon::S3>, using L<Data::Stream::Bulk::Callback>, AnyEvent-friendly by using L<Module::AnyEvent::Helper::Filter>. Therefore, almost all is the same as L<Data::Stream::Bulk::Callback>, excpet for (producer) callbackreturns an AnyEvent condition variable.
 
 =attr callback
 
@@ -127,14 +130,14 @@ Same as L<Data::Stream::Bulk::Callback>.
 Specify callback code reference called when data is requested.
 This attribute is C<required>. Therefore, you need to specify in constructor argument.
 
-There is no argument of the callback. Return value MUST be a condition variable that data is sent.
-If there is no more data, send C<undef>.
+There is no argument of the callback. Return value MUST be a condition variable that items are sent as an array reference.
+If there is no more items, send C<undef>.
 
 =attr cb
 
-Specify callback code reference called when C<put()> is called.
-A parameter of the callback is AnyEvent::CondVar object.
-If the callback return true, iteration is continued.
+Specify callback code reference called for each producer call.
+A parameter of the callback is an AnyEvent condition variable.
+If the callback returns true, iteration is continued.
 If false, iteration is suspended.
 If you need to resume iteration, you should call C<next> or set C<cb> again even though the same C<cb> is used. 
 
@@ -153,3 +156,7 @@ If called in callback mode, the object goes into blocking mode and callback is c
 =method is_done
 
 Same as L<Data::Stream::Callback>.
+
+=method recv
+
+Returns the self object.
