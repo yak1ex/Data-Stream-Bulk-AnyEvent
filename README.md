@@ -4,7 +4,7 @@ Data::Stream::Bulk::AnyEvent - AnyEvent-friendly Data::Stream::Bulk::Callback
 
 # VERSION
 
-version v0.0.0
+version v0.0.1
 
 # SYNOPSIS
 
