@@ -75,11 +75,6 @@ sub _on_cb_set
 	}
 }
 
-sub recv
-{
-	return $_[0];
-}
-
 __PACKAGE__->meta->make_immutable;
 
 1;
