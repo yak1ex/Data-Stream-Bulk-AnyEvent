@@ -148,6 +148,6 @@ You can change this value during lifetime of the object, except for the limitati
 Same as L<Data::Stream::Callback>.
 If called in callback mode, the object goes into blocking mode and callback is canceled.
 
-=method C<is_done>
+=method C<is_done()>
 
 Same as L<Data::Stream::Callback>.
