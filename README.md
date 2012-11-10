@@ -33,20 +33,20 @@ version v0.0.0
     # If you want to get more items, callback SHOULD return true. If not, return false.
     my $stream = Data::Stream::Bulk::AnyEvent->new(
         callback => sub { ... }, ...
-    )->cb(sub { my $ref = shift; ... return @$ref; });
+    )->cb(sub { my $ref = shift->recv; ... return defined $ref; });
 
 # DESCRIPTION
 
-This class is like [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), but there are some significant differences.
+This class is like [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), but there are some differences.
 
 - Consumer side can use asynchronous callback style.
-- Producer callback does not return actual items but return a condition variable. Items are sent via the condition variable.
+- Producer callback does not return actual items but returns a condition variable. Items are sent via the condition variable.
 
-Primary purpose of this class is to make [Net::Amazon::S3](http://search.cpan.org/perldoc?Net::Amazon::S3), using [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), AnyEvent-friendly by using [Module::AnyEvent::Helper::Filter](http://search.cpan.org/perldoc?Module::AnyEvent::Helper::Filter). Therefore, almost all is the same as [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), excpet for (producer) callbackreturns an AnyEvent condition variable.
+Primary purpose of this class is to make [Net::Amazon::S3](http://search.cpan.org/perldoc?Net::Amazon::S3), using [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback), AnyEvent-friendly by using [Module::AnyEvent::Helper::Filter](http://search.cpan.org/perldoc?Module::AnyEvent::Helper::Filter).
 
 # ATTRIBUTES
 
-## callback
+## `callback => sub { my $cv = AE::CV; ... return $cv; }`
 
 Same as [Data::Stream::Bulk::Callback](http://search.cpan.org/perldoc?Data::Stream::Bulk::Callback).
 
@@ -56,7 +56,7 @@ This attribute is `required`. Therefore, you need to specify in constructor argu
 There is no argument of the callback. Return value MUST be a condition variable that items are sent as an array reference.
 If there is no more items, send `undef`.
 
-## cb
+## `cb => sub { my ($cv) = @\_; }`
 
 Specify callback code reference called for each producer call.
 A parameter of the callback is an AnyEvent condition variable.
@@ -73,18 +73,14 @@ You can change this value during lifetime of the object, except for the limitati
 
 # METHODS
 
-## next
+## `next()`
 
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
 If called in callback mode, the object goes into blocking mode and callback is canceled.
 
-## is\_done
+## `is\_done`
 
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
-
-## recv
-
-Returns the self object.
 
 # AUTHOR
 

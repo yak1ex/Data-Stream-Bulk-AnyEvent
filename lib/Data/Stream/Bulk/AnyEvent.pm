@@ -106,19 +106,19 @@ __PACKAGE__->meta->make_immutable;
   # If you want to get more items, callback SHOULD return true. If not, return false.
   my $stream = Data::Stream::Bulk::AnyEvent->new(
       callback => sub { ... }, ...
-  )->cb(sub { my $ref = shift; ... return @$ref; });
+  )->cb(sub { my $ref = shift->recv; ... return defined $ref; });
 
 =head1 DESCRIPTION
 
-This class is like L<Data::Stream::Bulk::Callback>, but there are some significant differences.
+This class is like L<Data::Stream::Bulk::Callback>, but there are some differences.
 
 =for :list
 * Consumer side can use asynchronous callback style.
-* Producer callback does not return actual items but return a condition variable. Items are sent via the condition variable.
+* Producer callback does not return actual items but returns a condition variable. Items are sent via the condition variable.
 
-Primary purpose of this class is to make L<Net::Amazon::S3>, using L<Data::Stream::Bulk::Callback>, AnyEvent-friendly by using L<Module::AnyEvent::Helper::Filter>. Therefore, almost all is the same as L<Data::Stream::Bulk::Callback>, excpet for (producer) callbackreturns an AnyEvent condition variable.
+Primary purpose of this class is to make L<Net::Amazon::S3>, using L<Data::Stream::Bulk::Callback>, AnyEvent-friendly by using L<Module::AnyEvent::Helper::Filter>.
 
-=attr callback
+=attr C<callback =E<gt> sub { my $cv = AE::CV; ... return $cv; }>
 
 Same as L<Data::Stream::Bulk::Callback>.
 
@@ -128,7 +128,7 @@ This attribute is C<required>. Therefore, you need to specify in constructor arg
 There is no argument of the callback. Return value MUST be a condition variable that items are sent as an array reference.
 If there is no more items, send C<undef>.
 
-=attr cb
+=attr C<cb =E<gt> sub { my ($cv) = @_; }>
 
 Specify callback code reference called for each producer call.
 A parameter of the callback is an AnyEvent condition variable.
@@ -143,15 +143,11 @@ while to set C<callback> as C<undef> means this object goes into blocking mode.
 
 You can change this value during lifetime of the object, except for the limitation described above.
 
-=method next
+=method C<next()>
 
 Same as L<Data::Stream::Callback>.
 If called in callback mode, the object goes into blocking mode and callback is canceled.
 
-=method is_done
+=method C<is_done>
 
 Same as L<Data::Stream::Callback>.
-
-=method recv
-
-Returns the self object.
