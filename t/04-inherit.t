@@ -31,7 +31,7 @@ BEGIN { use_ok('Data::Stream::Bulk::AnyEvent'); }
 			return $cv;
 		},
 	);
-	while(my ($idx, $value) = each @expected) {
+	foreach my $value (@expected) {
 		is_deeply([$stream->items], defined($value) ? $value : []);
 	}
 	ok($stream->is_done, 'is_done');

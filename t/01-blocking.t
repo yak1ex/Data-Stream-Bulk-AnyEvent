@@ -19,7 +19,7 @@ my $stream =  Data::Stream::Bulk::AnyEvent->new(
 
 ok(! $stream->is_done, '!is_done in initial');
 
-while(my (undef, $value) = each @expected) {
+for my $value (@expected) {
 	is_deeply($stream->next, $value);
 }
 

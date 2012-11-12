@@ -57,7 +57,7 @@ $stream->cb(sub {
 
 $cv->recv;
 $stream->cb(undef);
-while(my (undef, $expected) = each @expected) {
+foreach my $expected (@expected) {
 	is_deeply($stream->next, $expected);
 }
 
