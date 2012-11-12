@@ -4,7 +4,7 @@ Data::Stream::Bulk::AnyEvent - AnyEvent-friendly Data::Stream::Bulk::Callback
 
 # VERSION
 
-version v0.0.1
+version v0.0.2
 
 # SYNOPSIS
 
@@ -78,7 +78,7 @@ You can change this value during lifetime of the object, except for the limitati
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
 If called in callback mode, the object goes into blocking mode and callback is canceled.
 
-## `is\_done`
+## `is\_done()`
 
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
 
