@@ -56,7 +56,7 @@ This attribute is `required`. Therefore, you need to specify in constructor argu
 There is no argument of the callback. Return value MUST be a condition variable that items are sent as an array reference.
 If there is no more items, send `undef`.
 
-## `cb => sub { my ($cv) = @\_; }`
+## `cb => sub { my ($cv) = @_; }`
 
 Specify callback code reference called for each producer call.
 A parameter of the callback is an AnyEvent condition variable.
@@ -78,7 +78,7 @@ You can change this value during lifetime of the object, except for the limitati
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
 If called in callback mode, the object goes into blocking mode and callback is canceled.
 
-## `is\_done()`
+## `is_done()`
 
 Same as [Data::Stream::Callback](http://search.cpan.org/perldoc?Data::Stream::Callback).
 
